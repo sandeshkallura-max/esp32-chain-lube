@@ -1,70 +1,67 @@
-# ESP32 Open Chain Bike – Smart Lubrication System
+# ESP32 Open Chain Bike – Smart Lubrication System (v2.0.0)
 
-## Included
-- `src/main.cpp`: ESP32 firmware, HTTP API, Hall RPM, DHT11, two-pump sequence, manual start and emergency stop.
-- `data/index.html`: professionally styled responsive website hosted directly by ESP32.
-- `platformio.ini`: PlatformIO build configuration.
+Automatic chain lubrication using an ESP32, Hall-effect wheel sensor, DHT11 and two relay-driven pumps, with a built-in web dashboard.
 
-## Default ESP32 DevKit V1 wiring
-| Device | ESP32 GPIO |
+## Project layout
+| Path | Purpose |
+|---|---|
+| `src/main.cpp` | Firmware: sensors, pump sequence, HTTP API |
+| `data/index.html` | Dashboard served from LittleFS (works fully offline) |
+| `platformio.ini` | Build config (not included here; see requirements below) |
+
+**Requirements:** ESP32 DevKit V1, `DHT sensor library`, `ArduinoJson` **6.x** (e.g. `bblanchon/ArduinoJson@^6.21`), `board_build.filesystem = littlefs`.
+
+## Wiring (ESP32 DevKit V1)
+| Device | GPIO |
 |---|---:|
 | Hall sensor OUT | 27 |
 | DHT11 DATA | 4 |
 | New pump relay IN | 25 |
 | Old pump relay IN | 26 |
-| Sensor/relay GND | GND |
-| Sensor supply | Follow module voltage requirements |
 
-Use a suitable external supply and properly rated relay/MOSFET driver for the pumps. Do not power pumps from an ESP32 GPIO. Ensure common ground where required by the driver design. Add flyback protection for inductive DC loads if not already built into the driver.
+Power the pumps from a separate, correctly rated supply through a relay/MOSFET driver. Never drive a pump from a GPIO. Share ground with the driver and add flyback protection on inductive loads.
 
-## Important relay warning
-The supplied Arduino sketch specified Active LOW, so this project defaults to `RELAY_ACTIVE_LOW = true`. You said your relay polarity is unknown. **Do not connect the pump load until you identify the relay input logic and test it with the pumps disconnected.** On boot, the firmware first writes the configured OFF level and then configures the output pins. If the relay is Active HIGH, change the constant to `false`, rebuild and upload. Verify both relay channels remain OFF during reset and startup.
+## Safety checklist (do this before connecting pumps)
+1. **Relay polarity.** Default is `RELAY_ACTIVE_LOW = true`. Test with pumps disconnected; if the relay is ON at idle, set it to `false`.
+2. **Boot-time state.** ESP32 pins 25/26 are high-impedance during reset, so firmware alone cannot hold the relays OFF. Fit a ~10 kΩ pull-up to 3.3 V on each relay input (Active LOW) or pull-down to GND (Active HIGH). Check both relays stay OFF through reset and power-up.
+3. **Physical emergency stop.** Add one in the pump power circuit. The web stop depends on Wi-Fi and software.
+4. Change `AP_PASSWORD` and `API_KEY` in `main.cpp` before real use.
 
-## Wi-Fi and access
-The ESP32 always starts a fallback Wi-Fi access point:
-- SSID: `ChainLube-ESP32`
-- Password: `chainlube123`
-- Website: `http://192.168.4.1`
-
-For home/router mode, edit `WIFI_SSID` and `WIFI_PASSWORD` near the top of `src/main.cpp`. The AP remains available as fallback. When connected to your router, the serial monitor prints the router IP too.
-
-Weather lookup is performed by the browser using Open-Meteo and needs internet access. If you connect directly to the ESP32 AP, your phone may not have internet while connected; use router mode for convenient weather lookup. Local sensor automation and pump control do not depend on the weather service.
-
-## Build and upload (PlatformIO)
-1. Install Visual Studio Code and the PlatformIO IDE extension.
-2. Open this project folder in VS Code.
-3. Connect ESP32 DevKit V1 by USB and select the correct serial port.
-4. Edit Wi-Fi credentials if using router mode.
-5. Build and upload firmware: PlatformIO `Upload`.
-6. Upload website files: PlatformIO `Upload Filesystem Image` (or terminal `pio run -t uploadfs`).
-7. Open Serial Monitor at 115200 baud. Visit the printed IP address.
-
-CLI commands:
+## Build and upload
 ```bash
 pio run
-pio run -t upload
-pio run -t uploadfs
-pio device monitor
+pio run -t upload       # firmware
+pio run -t uploadfs     # website (data/ folder)
+pio device monitor      # 115200 baud
 ```
+Default access point: `ChainLube-ESP32` → `http://192.168.4.1`. For router mode set `WIFI_SSID` / `WIFI_PASSWORD`; the AP stays available as fallback and the router IP prints on the serial monitor.
 
-## Logic
-- One Hall pulse represents one wheel revolution because you specified one magnet.
-- RPM is calculated over a 2-second window.
-- Every 10 Hall pulses queues an automatic lubrication cycle.
-- DHT11 temperature at or above the website setpoint queues a cycle.
-- Temperature trigger rearms at setpoint minus 2 °C.
-- New pump: 10 s; both pumps OFF: 10 s; old pump: 10 s.
-- Manual Start runs the same sequence.
-- Emergency Stop immediately commands both relay outputs OFF and cancels queued requests. Resume re-enables automatic operation.
-- Completed lubrication count and rolling event history are saved in ESP32 Preferences/LittleFS.
+## Security
+- Start, resume and setpoint requests require the `X-Api-Key` header. The dashboard asks for the key once per browser session.
+- Emergency stop is intentionally open so it can never be blocked by a lost key.
+- Traffic is plain HTTP on a local network; do not expose the device to the internet.
 
-## Notes / limitations to verify before real operation
-- This is a prototype implementation. Test with pump loads disconnected first.
-- Monthly counts are calculated from timestamped event history when NTP time is available through router Wi-Fi. In AP-only mode, the dashboard falls back to lifetime totals marked with `*` because the ESP32 has no reliable calendar time.
-- Event history is a rolling maximum of 500 entries.
-- The 3-day graph is the selected city's outdoor forecast, not three days of historical DHT11 measurements. DHT11 readings at each completed lubrication event are stored in the event history.
-- DHT11 is a low-cost sensor; do not treat it as a precision safety instrument.
-- RPM assumes exactly one Hall pulse per wheel revolution. If the sensor generates extra pulses or misses magnets, recalibrate.
-- The code uses the original 10-pulse trigger threshold. Adjust `WHEEL_LIMIT` if your intended lubrication interval differs.
-- There is no physical hardware feedback confirming that lubricant actually flowed; relay ON status only confirms the ESP32 command state.
-- Add a physical emergency stop in the pump power/control circuit for real-world use. Website emergency stop depends on Wi-Fi and software.
+## Operating logic
+- One Hall pulse = one wheel revolution (one magnet). RPM uses the measured interval.
+- Every `WHEEL_LIMIT` (10) pulses, or DHT11 ≥ setpoint (re-arms at setpoint − 2 °C), queues a cycle.
+- Cycle: new pump 10 s → both OFF 10 s → old pump 10 s. Requests queued together are served by one cycle; requests arriving mid-cycle run afterwards.
+- Emergency stop turns both outputs OFF, clears the queue and blocks new requests (including manual start) until **Resume**.
+- Three consecutive DHT11 failures raise `SENSOR_ERROR`; temperature triggers are suspended and no stale value is shown.
+- Task watchdog (10 s) reboots the ESP32 if the main loop hangs.
+- Counters persist in NVS; the last 500 events persist in LittleFS (`/history.bin`).
+
+## Changes from v1
+- **Fixed:** the new-pump relay was never switched ON (only the old pump ran).
+- **Fixed:** history was silently truncated; the JSON buffer was too small for 500 entries. Now stored in a compact binary file and streamed to the browser. Existing `history.json` data is not migrated.
+- **Fixed:** wheel requests arriving during a cycle were discarded.
+- **Fixed:** manual start no longer overrides an active emergency stop.
+- **Fixed:** wheel count was saved only at rollover (always 0); now saved periodically.
+- Wi-Fi no longer blocks boot; NTP starts whenever the router connects.
+- Removed the external background image so the dashboard works with no internet.
+
+## Known limitations
+- DHT11 is a low-accuracy sensor; not a safety instrument.
+- No flow feedback: relay ON confirms the command, not that lubricant moved.
+- Monthly counts need NTP time (router mode); in AP-only mode lifetime totals are shown, marked `*`.
+- The 3-day chart is an outdoor forecast from Open-Meteo, not DHT11 history.
+- Firmware has not been compiled or tested on hardware in this review.
