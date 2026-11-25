@@ -2,7 +2,7 @@
 
 ## Included
 - `src/main.cpp`: ESP32 firmware, HTTP API, Hall RPM, DHT11, two-pump sequence, manual start and emergency stop.
-- `data/index.html`: professionally styled responsive website hosted directly by ESP32, including Dashboard, Monthly Report, Settings, Help and a polished Report a Problem page.
+- `data/index.html`: professionally refreshed, responsive engineering dashboard hosted directly by ESP32 (light enterprise theme, mobile navigation, sensor cards, charts, controls and support pages), including Dashboard, Monthly Report, Settings, Help and a polished Report a Problem page.
 - `EMAILJS_TEMPLATE.html`: branded HTML email body to paste into the existing EmailJS Contact Us template.
 - `EMAIL_SETUP.md`: exact EmailJS field settings and upload instructions.
 - `platformio.ini`: PlatformIO build configuration.
