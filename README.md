@@ -82,3 +82,8 @@ pio device monitor
 
 ## Support email integration
 The Report a Problem page sends the issue category, user message, live ESP32 diagnostics and optional browser location through EmailJS. Finish the existing Contact Us template using `EMAIL_SETUP.md`, then add its Template ID to `data/index.html`. The EmailJS public key, service ID and admin recipient are preconfigured.
+
+
+## Buy Chain marketplace page
+
+The dashboard includes a Buy Chain page with Indian motorcycle brand/model/year selectors (Honda, Hero, Bajaj, TVS, Yamaha, Suzuki, Royal Enfield, KTM and Jawa), plus a custom model field. It builds Amazon India and Flipkart search links for a drive chain and chain-sprocket kit. Marketplace pages show current seller photos and prices; this static ESP32 dashboard does not scrape or guarantee live prices or product compatibility. Always verify model year, variant, chain pitch, link count and sprocket fitment with the seller before purchase.
