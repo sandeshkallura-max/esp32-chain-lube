@@ -1,69 +1,82 @@
-# EmailJS setup – configured values
+# Open Chain Bike – EmailJS support report setup
 
-The dashboard has been preconfigured with the supplied EmailJS values:
+The website now has a polished **Report a Problem** page and sends a structured support request with the user's message, latest ESP32 diagnostics and optional location.
+
+## 1. Reuse your existing “Contact Us” EmailJS template
+
+You do **not** need to create a separate EmailJS template. Open the existing **Contact Us** template shown in your screenshot and change its fields as follows:
+
+| EmailJS field | Set it to |
+|---|---|
+| To Email | `{{to_email}}` |
+| From Name | `Open Chain Bike Website` |
+| From Email | Keep **Use Default Email Address** checked |
+| Reply To | Leave blank (the website does not collect a visitor email address) |
+| Subject | `Open Chain Bike – Support Request: {{issue_type}}` |
+| Bcc / Cc | Leave blank unless you intentionally want extra recipients |
+
+The website supplies `to_email` as `s79178917@gmail.com`, so the report goes to the admin inbox.
+
+## 2. Replace the Contact Us message body
+
+In the **Content** tab, open the message/body editor. Switch to its HTML/source/code mode if available. Replace the old Contact Us body with the complete contents of `EMAILJS_TEMPLATE.html` in this project folder. Save the template.
+
+The HTML creates a responsive, branded email with an Open Chain Bike header and separate sections for issue category, user message, ESP32 diagnostics and optional location. If you prefer the rich-text editor, use these exact variables as plain text instead:
+
+```text
+OPEN CHAIN BIKE
+SMART CHAIN LUBRICATION · ESP32 MONITORING
+
+SUPPORT REQUEST
+Issue category: {{issue_type}}
+
+MESSAGE FROM WEBSITE USER
+{{user_message}}
+
+ESP32 SYSTEM DIAGNOSTICS
+{{system_diagnostics}}
+
+USER LOCATION
+{{user_location}}
+```
+
+Do not use the old Contact Us placeholders `{{title}}`, `{{name}}`, `{{email}}`, `{{message}}`, or `{{time}}`; this website does not send those fields. It sends `to_email`, `issue_type`, `user_message`, `system_diagnostics`, and `user_location`.
+
+## 3. Copy the Template ID into the website
+
+After saving the template, copy its Template ID from EmailJS. Open `data/index.html` and replace `template_fw1dc7g` in this line:
+
+```javascript
+const EMAILJS_TEMPLATE_ID='template_fw1dc7g';
+```
+
+Keep the single quotes. The other EmailJS settings are already filled in:
 
 - Public Key: `Qh-XlHZ5neSWK8lIo`
 - Service ID: `service_l2c9xo5`
 - Admin recipient: `s79178917@gmail.com`
-- Template ID: **not supplied yet**. The dashboard currently contains `PASTE_TEMPLATE_ID_HERE` as a placeholder, so sending is intentionally blocked until you replace it.
 
-## 1. Create the EmailJS template
+## 4. Upload the updated website to ESP32
 
-1. Sign in at https://dashboard.emailjs.com/ and open **Email Templates**.
-2. Choose **Create New Template**. Give it a name such as `ESP32 Chain Lubrication Problem Report`.
-3. Set **To Email** to `{{to_email}}`. The dashboard code supplies `s79178917@gmail.com` in this parameter.
-4. Set the subject to `ESP32 Chain Lubrication – Problem Report: {{issue_type}}`.
-5. Set the email content to the following (plain text is fine):
+1. Extract this ZIP.
+2. Open the `esp32_chain_lubrication` folder (the folder containing `platformio.ini`) in Visual Studio Code with PlatformIO installed.
+3. Connect the ESP32 over USB.
+4. If only the website or template ID changed, run **PlatformIO: Upload Filesystem Image**. You do not need to re-upload firmware for HTML-only changes.
+5. Open Serial Monitor at `115200` baud and reload the ESP32 dashboard.
+6. Submit a test report and check the admin inbox and spam folder.
 
-```text
-ESP32 CHAIN LUBRICATION – PROBLEM REPORT
-
-Issue type:
-{{issue_type}}
-
-User message:
-{{user_message}}
-
-System diagnostics:
-{{system_diagnostics}}
-
-User location:
-{{user_location}}
-```
-
-6. Save the template and copy its **Template ID** (often shown as `template_...`).
-
-## 2. Add the Template ID to the project
-
-Open `data/index.html` and find this line:
-
-```javascript
-const EMAILJS_TEMPLATE_ID='PASTE_TEMPLATE_ID_HERE';
-```
-
-Replace only `PASTE_TEMPLATE_ID_HERE` with your actual Template ID, keeping the single quotes. Save the file. No other EmailJS values need changing.
-
-## 3. Upload the dashboard files to ESP32
-
-In VS Code with PlatformIO:
-
-1. Open the `esp32_chain_lubrication` folder (the folder containing `platformio.ini`).
-2. Connect the ESP32 by USB.
-3. Run **PlatformIO: Build** and **PlatformIO: Upload** if you have changed firmware or are setting it up for the first time.
-4. Run **PlatformIO: Upload Filesystem Image** to upload `data/index.html` to the ESP32. This step is essential for dashboard changes.
-5. Open the Serial Monitor at `115200` baud and visit the ESP32 IP address. Refresh the dashboard, then test **Report a Problem**.
-
-CLI alternative from the project folder:
+Terminal command from the project folder:
 
 ```bash
 pio run -t uploadfs
 ```
 
-If firmware is also required, run `pio run -t upload` before `pio run -t uploadfs`.
+For first-time setup or firmware changes, build and upload firmware first using **PlatformIO: Upload** or `pio run -t upload`, then upload the filesystem image.
 
-## Important notes
+## Important
 
-- The ESP32-hosted dashboard loads the EmailJS browser SDK from a CDN, so the phone/browser needs internet access while submitting the report. A phone connected to the ESP32 access point may not have internet unless it also has a suitable internet path.
-- Browser geolocation may be blocked on `http://192.168.4.1`; location is optional and the report should still send without it.
-- Never place your Gmail password, SMTP password, or EmailJS Private Key in the dashboard or firmware. The Public Key is intended for client-side use. Configure EmailJS origin restrictions/rate limits where available.
-- The email integration has not been live-tested against your EmailJS account. After creating the template, use EmailJS's test function and then submit a test report from the dashboard.
+- EmailJS template variables are populated from the parameter object sent by the website. Keep the spelling and underscores exactly as shown. See the [EmailJS dynamic variables guide](https://www.emailjs.com/docs/user-guide/dynamic-variables-templates/).
+- The website loads the EmailJS browser SDK from a CDN, so the phone/browser needs internet access while sending. A phone connected to the ESP32 access point may not have internet at the same time.
+- Location is optional. Browser geolocation may be blocked on the ESP32 local HTTP address; the report still sends with `Not shared / browser permission unavailable`.
+- Never put your Gmail password, SMTP password or EmailJS Private Key in the website or firmware. The EmailJS Public Key is intended for client-side use. Configure origin restrictions and rate limits where available.
+- This project has not been live-tested against your EmailJS account or physical ESP32 hardware.

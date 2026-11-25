@@ -2,7 +2,9 @@
 
 ## Included
 - `src/main.cpp`: ESP32 firmware, HTTP API, Hall RPM, DHT11, two-pump sequence, manual start and emergency stop.
-- `data/index.html`: professionally styled responsive website hosted directly by ESP32.
+- `data/index.html`: professionally styled responsive website hosted directly by ESP32, including Dashboard, Monthly Report, Settings, Help and a polished Report a Problem page.
+- `EMAILJS_TEMPLATE.html`: branded HTML email body to paste into the existing EmailJS Contact Us template.
+- `EMAIL_SETUP.md`: exact EmailJS field settings and upload instructions.
 - `platformio.ini`: PlatformIO build configuration.
 
 ## Default ESP32 DevKit V1 wiring
@@ -76,3 +78,7 @@ pio device monitor
 - Browser location is optional and requested only on submit. Geolocation generally requires a secure context; `http://192.168.4.1` may block access. The report still sends without location. Google Maps can request location independently.
 - EmailJS is preconfigured with the supplied Public Key, Service ID and admin recipient. It will not send until you create an EmailJS template and replace `PASTE_TEMPLATE_ID_HERE` in `data/index.html` with its Template ID. Template variables: `to_email`, `issue_type`, `user_message`, `system_diagnostics`, `user_location`. Follow `EMAIL_SETUP.md`.
 - Never put Gmail/SMTP passwords in the ESP32 firmware or dashboard. Use a backend mail relay for production.
+
+
+## Support email integration
+The Report a Problem page sends the issue category, user message, live ESP32 diagnostics and optional browser location through EmailJS. Finish the existing Contact Us template using `EMAIL_SETUP.md`, then add its Template ID to `data/index.html`. The EmailJS public key, service ID and admin recipient are preconfigured.
