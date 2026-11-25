@@ -83,6 +83,17 @@ footer{color:#7b8ba0!important;border-color:#e2e8f0!important}
 @media(max-width:560px){header{padding:13px 14px}.brand{font-size:15px}.brand small{font-size:9px}.nav{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px}.nav button{font-size:11px;padding:10px 6px}.conn{width:100%;font-size:11px}main{padding:22px 13px 42px}.card{padding:16px!important}.metric{min-height:120px}.value{font-size:28px}.hero{gap:10px}.chart{height:205px}}
 @media(prefers-reduced-motion:no-preference){.card{transition:box-shadow .18s ease,transform .18s ease}.card:hover{box-shadow:0 11px 30px rgba(20,42,75,.085)!important}}
 
+
+/* Mobile navigation correction: prevent the tall sticky header from covering report content */
+@media(max-width:560px){
+ header{position:relative!important;top:auto!important;z-index:2!important;display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:10px!important;padding:12px 14px!important;min-height:0!important;height:auto!important}
+ .brand{white-space:normal!important;line-height:1.35!important;font-size:14px!important}
+ .brand small{font-size:9px!important;line-height:1.4!important;margin-left:0!important}
+ .nav{width:100%!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:5px!important}
+ .nav button{min-height:38px!important;padding:8px 6px!important;font-size:12px!important;white-space:normal!important}
+ .conn{width:100%!important;margin:0!important;font-size:11px!important}
+}
+
 </style></head>
 <body>
 <header><div class="brand">OPEN CHAIN BIKE <small>SMART CHAIN LUBRICATION · ESP32 MONITORING</small></div>
@@ -154,7 +165,7 @@ $('manualStart').onclick=async()=>{try{await api('/api/manual/start',{method:'PO
 $('stopPumps').onclick=async()=>{if(!confirm('Emergency stop: switch OFF both pump outputs now?'))return;try{await api('/api/stop',{method:'POST',body:'{}'});showMsg('controlMsg','Emergency stop sent. Both outputs commanded OFF.',true);refresh()}catch(e){showMsg('controlMsg',e.message,true)}};
 $('resumeAuto').onclick=async()=>{try{await api('/api/resume',{method:'POST',body:'{}'});showMsg('controlMsg','Automatic monitoring resumed.');refresh()}catch(e){showMsg('controlMsg',e.message,true)}};
 
-const EMAILJS_PUBLIC_KEY='Qh-XlHZ5neSWK8lIo';const EMAILJS_SERVICE_ID='service_l2c9xo5';const EMAILJS_TEMPLATE_ID='template_fw1dc7g';const REPORT_RECIPIENT='s79178917@gmail.com';
+const EMAILJS_PUBLIC_KEY='Qh-XlHZ5neSWK8lIo';const EMAILJS_SERVICE_ID='service_ivi9hjo';const EMAILJS_TEMPLATE_ID='template_fw1dc7g';const REPORT_RECIPIENT='s79178917@gmail.com';
 function collectDiagnostics(){const s=latestStatus||{};return [`ESP32: ${$('connText').textContent}`,`Sensor: ${s.sensorError?'DHT11 ERROR':'Monitoring'}`,`RPM: ${s.rpm??'N/A'}`,`Hall pulses: ${s.wheelCount??'N/A'} / ${s.wheelLimit??'N/A'}`,`Temperature: ${s.temperature??'N/A'} C`, `Humidity: ${s.humidity??'N/A'} %`,`Setpoint/reset: ${s.setPoint??'N/A'} / ${s.resetPoint??'N/A'} C`,`New pump: ${s.newPump?'ON':'OFF'}; old pump: ${s.oldPump?'ON':'OFF'}`,`Pump sequence: ${s.pumpState??'N/A'} (${s.pumpMessage??''})`,`Emergency stop: ${s.emergencyStopped?'ACTIVE':'not active'}`,`Lubrications: ${s.lubricationCount??'N/A'}; automatic: ${s.automaticCount??'N/A'}; manual: ${s.manualCount??'N/A'}`,`Last lubrication: ${s.lastLubricationAt??'N/A'}`,`Uptime seconds: ${s.uptimeSeconds??'N/A'}`,`Relay: ${s.relayActiveLow?'Active LOW':'Active HIGH'}`,`Browser time: ${new Date().toLocaleString()}`].join('\n')}
 function optionalLocation(){return new Promise(resolve=>{if(!navigator.geolocation){resolve('Unavailable');return;}navigator.geolocation.getCurrentPosition(p=>resolve(`Lat ${p.coords.latitude.toFixed(6)}, Lon ${p.coords.longitude.toFixed(6)} (±${Math.round(p.coords.accuracy)} m)`),()=>resolve('Not shared / browser permission unavailable'),{timeout:5000,maximumAge:60000});});}
 $('submitProblem').onclick=async()=>{const message=$('problemMessage').value.trim();if(!message){showMsg('problemMsg','Please describe the problem before submitting.',true);return;}if(!window.emailjs||EMAILJS_PUBLIC_KEY.startsWith('YOUR_')||EMAILJS_SERVICE_ID.startsWith('YOUR_')||EMAILJS_TEMPLATE_ID==='PASTE_TEMPLATE_ID_HERE'||REPORT_RECIPIENT.startsWith('YOUR_')){showMsg('problemMsg','Email is not configured. Create an EmailJS template, then replace PASTE_TEMPLATE_ID_HERE in index.html with its Template ID.',true);return;}const btn=$('submitProblem');btn.disabled=true;btn.textContent='Preparing report…';try{const location=await optionalLocation();emailjs.init({publicKey:EMAILJS_PUBLIC_KEY});await emailjs.send(EMAILJS_SERVICE_ID,EMAILJS_TEMPLATE_ID,{to_email:REPORT_RECIPIENT,issue_type:$('problemType').value,user_message:message,system_diagnostics:collectDiagnostics(),user_location:location});showMsg('problemMsg','Problem report sent successfully.');$('problemMessage').value='';}catch(e){showMsg('problemMsg','Could not send report: '+(e.text||e.message||'Email service error'),true);}finally{btn.disabled=false;btn.textContent='Send support report ↗';}};

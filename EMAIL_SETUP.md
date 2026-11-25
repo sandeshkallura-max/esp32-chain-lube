@@ -53,7 +53,7 @@ const EMAILJS_TEMPLATE_ID='template_fw1dc7g';
 Keep the single quotes. The other EmailJS settings are already filled in:
 
 - Public Key: `Qh-XlHZ5neSWK8lIo`
-- Service ID: `service_l2c9xo5`
+- Service ID: `service_ivi9hjo`
 - Admin recipient: `s79178917@gmail.com`
 
 ## 4. Upload the updated website to ESP32
@@ -80,3 +80,7 @@ For first-time setup or firmware changes, build and upload firmware first using 
 - Location is optional. Browser geolocation may be blocked on the ESP32 local HTTP address; the report still sends with `Not shared / browser permission unavailable`.
 - Never put your Gmail password, SMTP password or EmailJS Private Key in the website or firmware. The EmailJS Public Key is intended for client-side use. Configure origin restrictions and rate limits where available.
 - This project has not been live-tested against your EmailJS account or physical ESP32 hardware.
+
+
+## Troubleshooting: “The service ID not found”
+This response comes from EmailJS, before the message is delivered. Open EmailJS Dashboard → Email Services, open the connected mail service, and copy its exact Service ID. Compare it character-for-character with `EMAILJS_SERVICE_ID` in `data/index.html`. If the service was deleted, disconnected, or belongs to a different EmailJS account, reconnect/create a service and replace the ID in the file. Save and upload the filesystem again (`pio run -t uploadfs`). The website cannot determine or repair an EmailJS dashboard service ID on its own.
