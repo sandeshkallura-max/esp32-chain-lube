@@ -17,6 +17,11 @@ const char* WIFI_PASSWORD = "";
 const char* AP_SSID = "ChainLube-ESP32";
 const char* AP_PASSWORD = "chainlube123";
 
+// Website login (HTTP Basic Authentication). Browser asks for both fields.
+// Username: admin | Password: AutoLube
+const char* WEB_USERNAME = "admin";
+const char* WEB_PASSWORD = "AutoLube";
+
 // Original code used Active LOW. VERIFY your relay module before
 // connecting the pumps. Change to false for Active HIGH modules.
 constexpr bool RELAY_ACTIVE_LOW = true;
@@ -81,6 +86,13 @@ struct HistoryItem {
 HistoryItem history[HISTORY_LIMIT];
 uint16_t historyCount = 0;
 uint16_t historyHead = 0;
+
+// Protect every page and API route. Do not rely on frontend-only checks.
+bool requireWebLogin() {
+  if (server.authenticate(WEB_USERNAME, WEB_PASSWORD)) return true;
+  server.requestAuthentication(BASIC_AUTH, "Chain Lubrication System", "Login required");
+  return false;
+}
 
 String stateName() {
   switch (pumpState) {
@@ -283,6 +295,7 @@ void getMonthlyCounts(uint32_t &total, uint32_t &autoTotal, uint32_t &manualTota
   }
 }
 void sendStatus() {
+  if (!requireWebLogin()) return;
   DynamicJsonDocument doc(2048);
   doc["connected"] = true;
   doc["chainStatus"] = sensorError ? "SENSOR_ERROR" : "MONITORING";
@@ -317,6 +330,7 @@ void sendStatus() {
   server.send(200, "application/json", out);
 }
 void handleSetpoint() {
+  if (!requireWebLogin()) return;
   DynamicJsonDocument doc(256);
   if (deserializeJson(doc, server.arg("plain"))) { server.send(400, "application/json", "{\"error\":\"Invalid JSON\"}"); return; }
   if (!doc["setPoint"].is<float>() && !doc["setPoint"].is<int>()) { server.send(400, "application/json", "{\"error\":\"setPoint required\"}"); return; }
@@ -324,6 +338,7 @@ void handleSetpoint() {
   server.send(200, "application/json", "{\"ok\":true}");
 }
 void handleManualStart() {
+  if (!requireWebLogin()) return;
   if (pumpState != IDLE) { server.send(409, "application/json", "{\"error\":\"Pump sequence already active\"}"); return; }
   emergencyStopped = false;
   manualRequest = true;
@@ -331,15 +346,18 @@ void handleManualStart() {
   server.send(200, "application/json", "{\"ok\":true,\"message\":\"Manual sequence requested\"}");
 }
 void handleStop() {
+  if (!requireWebLogin()) return;
   stopImmediately("Emergency stop activated");
   server.send(200, "application/json", "{\"ok\":true,\"message\":\"Both pump outputs switched OFF\"}");
 }
 void handleResume() {
+  if (!requireWebLogin()) return;
   emergencyStopped = false;
   pumpMessage = "Automatic monitoring resumed";
   server.send(200, "application/json", "{\"ok\":true}");
 }
 void handleHistory() {
+  if (!requireWebLogin()) return;
   DynamicJsonDocument doc(30000);
   JsonArray arr = doc.to<JsonArray>();
   uint16_t start = (historyHead + HISTORY_LIMIT - historyCount) % HISTORY_LIMIT;
@@ -354,6 +372,7 @@ void handleHistory() {
   server.send(200, "application/json", out);
 }
 void handleRoot() {
+  if (!requireWebLogin()) return;
   File f = LittleFS.open("/index.html", "r");
   if (!f) { server.send(500, "text/plain", "Website file missing. Upload LittleFS data folder."); return; }
   server.streamFile(f, "text/html");
@@ -367,7 +386,7 @@ void setupServer() {
   server.on("/api/manual/start", HTTP_POST, handleManualStart);
   server.on("/api/stop", HTTP_POST, handleStop);
   server.on("/api/resume", HTTP_POST, handleResume);
-  server.onNotFound([](){ server.send(404, "application/json", "{\"error\":\"Not found\"}"); });
+  server.onNotFound([](){ if (!requireWebLogin()) return; server.send(404, "application/json", "{\"error\":\"Not found\"}"); });
   server.begin();
 }
 void setup() {

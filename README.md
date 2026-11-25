@@ -1,5 +1,9 @@
 # ESP32 Open Chain Bike – Smart Lubrication System
 
+## Website login
+The dashboard and its API routes are protected by ESP32-side HTTP Basic Authentication. Use browser username `admin` and password `AutoLube`. See `LOGIN_SETUP.md` for upload steps and security notes.
+
+
 ## Included
 - `src/main.cpp`: ESP32 firmware, HTTP API, Hall RPM, DHT11, two-pump sequence, manual start and emergency stop.
 - `data/index.html`: professionally refreshed, responsive engineering dashboard hosted directly by ESP32 (light enterprise theme, mobile navigation, sensor cards, charts, controls and support pages), including Dashboard, Monthly Report, Settings, Help and a polished Report a Problem page.
